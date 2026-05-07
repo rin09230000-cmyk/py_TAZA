@@ -43,6 +43,20 @@ sentences = {
 # 제목
 st.title("⌨️ Python 타자 연습")
 
+# 이름 입력
+username = st.text_input(
+    "이름을 입력하세요",
+    placeholder="예: 규린"
+)
+
+# 이름 입력 전 안내
+if not username:
+    st.warning("이름을 입력해주세요!")
+    st.stop()
+
+# 환영 메시지
+st.success(f"{username}님 환영합니다 👋")
+
 # 난이도 선택
 difficulty = st.selectbox(
     "난이도 선택",
@@ -71,7 +85,7 @@ if difficulty != st.session_state.previous_difficulty:
 
 sentence = st.session_state.sentence
 
-# 문제 출력
+# 문제 표시
 st.subheader("아래 Python 코드를 그대로 입력하세요")
 
 st.code(sentence, language="python")
@@ -98,6 +112,7 @@ if user_input and st.session_state.start_time is None:
 
 # 정확도 계산
 def calculate_accuracy(input_text, target_text):
+
     correct = 0
 
     for a, b in zip(input_text, target_text):
@@ -106,7 +121,7 @@ def calculate_accuracy(input_text, target_text):
 
     return (correct / len(target_text)) * 100
 
-# 성공 판정
+# 정답 체크
 if user_input == sentence and not st.session_state.finished:
 
     end_time = time.time()
@@ -117,7 +132,7 @@ if user_input == sentence and not st.session_state.finished:
 
     accuracy = calculate_accuracy(user_input, sentence)
 
-    st.success("🎉 정답!")
+    st.success(f"🎉 {username}님 성공!")
 
     st.metric("⏱️ 시간", f"{elapsed:.2f}초")
     st.metric("⚡ 속도", f"{cpm:.0f} CPM")
