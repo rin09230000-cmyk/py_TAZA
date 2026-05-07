@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 난이도별 Python 코드
+# 난이도별 문제
 sentences = {
     "초급": [
         "print('Hello World')",
@@ -43,27 +43,22 @@ sentences = {
 # 제목
 st.title("⌨️ Python 타자 연습")
 
-# 이름 입력
-username = st.text_input(
-    "이름을 입력하세요",
-    placeholder="예: 규린"
-)
+# 상단 설정 영역
+col1, col2 = st.columns(2)
 
-# 이름 입력 전 안내
-if not username:
-    st.warning("이름을 입력해주세요!")
-    st.stop()
+with col1:
+    username = st.text_input(
+        "이름",
+        placeholder="이름 입력"
+    )
 
-# 환영 메시지
-st.success(f"{username}님 환영합니다 👋")
+with col2:
+    difficulty = st.selectbox(
+        "난이도",
+        ["초급", "중급", "고급"]
+    )
 
-# 난이도 선택
-difficulty = st.selectbox(
-    "난이도 선택",
-    ["초급", "중급", "고급"]
-)
-
-# 세션 상태
+# 세션 상태 초기화
 if "sentence" not in st.session_state:
     st.session_state.sentence = random.choice(sentences[difficulty])
 
@@ -73,26 +68,35 @@ if "previous_difficulty" not in st.session_state:
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
 
-if "finished" not in st.session_state:
-    st.session_state.finished = False
+if "editor_key" not in st.session_state:
+    st.session_state.editor_key = 0
 
-# 난이도 변경 시 새 문제
+# 난이도 변경 시 문제 변경
 if difficulty != st.session_state.previous_difficulty:
+
     st.session_state.sentence = random.choice(sentences[difficulty])
     st.session_state.previous_difficulty = difficulty
     st.session_state.start_time = None
-    st.session_state.finished = False
+    st.session_state.editor_key += 1
 
 sentence = st.session_state.sentence
 
-# 문제 표시
-st.subheader("아래 Python 코드를 그대로 입력하세요")
+st.divider()
+
+# 이름 안내
+if username:
+    st.success(f"{username}님 화이팅! 🚀")
+else:
+    st.info("이름을 입력하면 기록에 표시돼요!")
+
+# 제시 코드
+st.subheader("📌 제시 코드")
 
 st.code(sentence, language="python")
 
-st.divider()
+# 입력창
+st.subheader("⌨️ 코드 입력")
 
-# 코드 입력창
 user_input = st_ace(
     placeholder="여기에 Python 코드를 입력하세요...",
     language="python",
@@ -103,14 +107,15 @@ user_input = st_ace(
     show_gutter=True,
     wrap=True,
     auto_update=True,
-    height=250
+    height=250,
+    key=f"editor_{st.session_state.editor_key}"
 )
 
 # 시작 시간
 if user_input and st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 
-# 정확도 계산
+# 정확도 계산 함수
 def calculate_accuracy(input_text, target_text):
 
     correct = 0
@@ -122,7 +127,7 @@ def calculate_accuracy(input_text, target_text):
     return (correct / len(target_text)) * 100
 
 # 정답 체크
-if user_input == sentence and not st.session_state.finished:
+if user_input == sentence:
 
     end_time = time.time()
     elapsed = end_time - st.session_state.start_time
@@ -132,15 +137,23 @@ if user_input == sentence and not st.session_state.finished:
 
     accuracy = calculate_accuracy(user_input, sentence)
 
-    st.success(f"🎉 {username}님 성공!")
+    st.success(
+        f"🎉 완료! "
+        f"⏱️ {elapsed:.2f}초 | "
+        f"⚡ {cpm:.0f} CPM | "
+        f"🎯 {accuracy:.1f}%"
+    )
 
-    st.metric("⏱️ 시간", f"{elapsed:.2f}초")
-    st.metric("⚡ 속도", f"{cpm:.0f} CPM")
-    st.metric("🎯 정확도", f"{accuracy:.1f}%")
+    # 다음 문제 자동 생성
+    st.session_state.sentence = random.choice(sentences[difficulty])
 
-    st.balloons()
+    # 입력창 초기화
+    st.session_state.editor_key += 1
 
-    st.session_state.finished = True
+    # 시간 초기화
+    st.session_state.start_time = None
+
+    st.rerun()
 
 # 실시간 정확도
 elif user_input:
@@ -149,18 +162,24 @@ elif user_input:
 
     st.info(f"현재 정확도: {accuracy:.1f}%")
 
-# 버튼
-col1, col2 = st.columns(2)
+st.divider()
 
-with col1:
-    if st.button("🔄 새 문제"):
+# 버튼
+col3, col4 = st.columns(2)
+
+with col3:
+    if st.button("🔄 문제 변경"):
+
         st.session_state.sentence = random.choice(sentences[difficulty])
         st.session_state.start_time = None
-        st.session_state.finished = False
+        st.session_state.editor_key += 1
+
         st.rerun()
 
-with col2:
-    if st.button("🧹 초기화"):
+with col4:
+    if st.button("🧹 입력 초기화"):
+
         st.session_state.start_time = None
-        st.session_state.finished = False
+        st.session_state.editor_key += 1
+
         st.rerun()
