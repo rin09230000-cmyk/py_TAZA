@@ -106,7 +106,7 @@ st.code(sentence, language="python")
 st.subheader("⌨️ 코드 입력")
 
 user_input = st_ace(
-    placeholder="여기에 Python 코드를 입력하세요...",
+    placeholder="코드를 입력한 뒤 아래 제출 버튼 또는 Ctrl+Enter 사용",
     language="python",
     theme="monokai",
     keybinding="vscode",
@@ -114,7 +114,7 @@ user_input = st_ace(
     tab_size=4,
     show_gutter=True,
     wrap=True,
-    auto_update=True,
+    auto_update=False,
     height=250,
     readonly=st.session_state.finished,
     key=f"editor_{st.session_state.editor_key}"
@@ -124,7 +124,7 @@ user_input = st_ace(
 if user_input and st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 
-# 정확도 계산
+# 정확도 계산 함수
 def calculate_accuracy(input_text, target_text):
 
     correct = 0
@@ -135,31 +135,50 @@ def calculate_accuracy(input_text, target_text):
 
     return (correct / len(target_text)) * 100
 
-# 정답 체크
-if (
-    user_input == sentence
-    and not st.session_state.finished
-):
+# 제출 버튼
+submit = st.button(
+    "✅ 제출하기",
+    disabled=st.session_state.finished
+)
 
-    end_time = time.time()
+# 제출 시 판정
+if submit and not st.session_state.finished:
 
-    elapsed = end_time - st.session_state.start_time
+    if user_input == sentence:
 
-    chars = len(sentence)
+        end_time = time.time()
 
-    cpm = (chars / elapsed) * 60
+        elapsed = end_time - st.session_state.start_time
 
-    accuracy = calculate_accuracy(user_input, sentence)
+        chars = len(sentence)
 
-    st.session_state.result = {
-        "time": elapsed,
-        "cpm": cpm,
-        "accuracy": accuracy
-    }
+        cpm = (chars / elapsed) * 60
 
-    st.session_state.finished = True
+        accuracy = calculate_accuracy(
+            user_input,
+            sentence
+        )
 
-    st.rerun()
+        st.session_state.result = {
+            "time": elapsed,
+            "cpm": cpm,
+            "accuracy": accuracy
+        }
+
+        st.session_state.finished = True
+
+        st.rerun()
+
+    else:
+
+        accuracy = calculate_accuracy(
+            user_input,
+            sentence
+        )
+
+        st.error(
+            f"❌ 틀렸어요! 현재 정확도: {accuracy:.1f}%"
+        )
 
 # 결과 표시
 if st.session_state.finished and st.session_state.result:
@@ -201,17 +220,9 @@ if st.session_state.finished and st.session_state.result:
 
         st.session_state.result = None
 
-        # 입력창 리셋
         st.session_state.editor_key += 1
 
         st.rerun()
-
-# 실시간 정확도
-elif user_input:
-
-    accuracy = calculate_accuracy(user_input, sentence)
-
-    st.info(f"현재 정확도: {accuracy:.1f}%")
 
 st.divider()
 
@@ -239,3 +250,4 @@ with col7:
         st.session_state.editor_key += 1
 
         st.rerun()
+        
