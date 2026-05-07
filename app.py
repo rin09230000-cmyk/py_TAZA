@@ -1,23 +1,60 @@
 import streamlit as st
+from streamlit_ace import st_ace
 import time
 import random
 
-# 연습 문장 목록
-sentences = [
-    "Python is very fun to learn.",
-    "Streamlit makes web apps easy.",
-    "Typing fast takes practice.",
-    "GitHub is useful for developers.",
-    "Artificial intelligence is amazing."
-]
+st.set_page_config(
+    page_title="Python 타자 연습",
+    page_icon="⌨️",
+    layout="centered"
+)
 
-st.set_page_config(page_title="타자 연습", page_icon="⌨️")
+# 난이도별 Python 코드
+sentences = {
+    "초급": [
+        "print('Hello World')",
+        "name = input()",
+        "x = 10",
+        "for i in range(5):\n    print(i)",
+        "if x > 0:\n    print('positive')"
+    ],
 
-st.title("⌨️ 타자 연습 웹앱")
+    "중급": [
+        "def hello(name):\n    return name.upper()",
 
-# 세션 상태 초기화
+        "numbers = [1, 2, 3, 4]\nfor n in numbers:\n    print(n)",
+
+        "try:\n    print(x)\nexcept Exception as e:\n    print(e)",
+
+        "with open('test.txt') as file:\n    data = file.read()"
+    ],
+
+    "고급": [
+        "result = [x for x in range(100) if x % 2 == 0]",
+
+        "class Student:\n    def __init__(self, name):\n        self.name = name",
+
+        "data = sorted(users, key=lambda x: x['age'])",
+
+        "async def fetch_data():\n    await asyncio.sleep(1)\n    return True"
+    ]
+}
+
+# 제목
+st.title("⌨️ Python 타자 연습")
+
+# 난이도 선택
+difficulty = st.selectbox(
+    "난이도 선택",
+    ["초급", "중급", "고급"]
+)
+
+# 세션 상태
 if "sentence" not in st.session_state:
-    st.session_state.sentence = random.choice(sentences)
+    st.session_state.sentence = random.choice(sentences[difficulty])
+
+if "previous_difficulty" not in st.session_state:
+    st.session_state.previous_difficulty = difficulty
 
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
@@ -25,41 +62,90 @@ if "start_time" not in st.session_state:
 if "finished" not in st.session_state:
     st.session_state.finished = False
 
+# 난이도 변경 시 새 문제
+if difficulty != st.session_state.previous_difficulty:
+    st.session_state.sentence = random.choice(sentences[difficulty])
+    st.session_state.previous_difficulty = difficulty
+    st.session_state.start_time = None
+    st.session_state.finished = False
+
 sentence = st.session_state.sentence
 
-st.subheader("다음 문장을 입력하세요:")
-st.code(sentence)
+# 문제 출력
+st.subheader("아래 Python 코드를 그대로 입력하세요")
 
-user_input = st.text_input("여기에 입력:")
+st.code(sentence, language="python")
 
-# 입력 시작 시간 기록
+st.divider()
+
+# 코드 입력창
+user_input = st_ace(
+    placeholder="여기에 Python 코드를 입력하세요...",
+    language="python",
+    theme="monokai",
+    keybinding="vscode",
+    font_size=16,
+    tab_size=4,
+    show_gutter=True,
+    wrap=True,
+    auto_update=True,
+    height=250
+)
+
+# 시작 시간
 if user_input and st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 
-# 완료 체크
+# 정확도 계산
+def calculate_accuracy(input_text, target_text):
+    correct = 0
+
+    for a, b in zip(input_text, target_text):
+        if a == b:
+            correct += 1
+
+    return (correct / len(target_text)) * 100
+
+# 성공 판정
 if user_input == sentence and not st.session_state.finished:
+
     end_time = time.time()
-    elapsed_time = end_time - st.session_state.start_time
+    elapsed = end_time - st.session_state.start_time
 
-    words = len(sentence.split())
-    wpm = (words / elapsed_time) * 60
+    chars = len(sentence)
+    cpm = (chars / elapsed) * 60
 
-    correct_chars = sum(
-        1 for a, b in zip(user_input, sentence) if a == b
-    )
-    accuracy = (correct_chars / len(sentence)) * 100
+    accuracy = calculate_accuracy(user_input, sentence)
 
-    st.success("완료!")
+    st.success("🎉 정답!")
 
-    st.write(f"⏱️ 시간: {elapsed_time:.2f}초")
-    st.write(f"⚡ 속도: {wpm:.2f} WPM")
-    st.write(f"🎯 정확도: {accuracy:.2f}%")
+    st.metric("⏱️ 시간", f"{elapsed:.2f}초")
+    st.metric("⚡ 속도", f"{cpm:.0f} CPM")
+    st.metric("🎯 정확도", f"{accuracy:.1f}%")
+
+    st.balloons()
 
     st.session_state.finished = True
 
-# 재시작 버튼
-if st.button("다시 시작"):
-    st.session_state.sentence = random.choice(sentences)
-    st.session_state.start_time = None
-    st.session_state.finished = False
-    st.rerun()
+# 실시간 정확도
+elif user_input:
+
+    accuracy = calculate_accuracy(user_input, sentence)
+
+    st.info(f"현재 정확도: {accuracy:.1f}%")
+
+# 버튼
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🔄 새 문제"):
+        st.session_state.sentence = random.choice(sentences[difficulty])
+        st.session_state.start_time = None
+        st.session_state.finished = False
+        st.rerun()
+
+with col2:
+    if st.button("🧹 초기화"):
+        st.session_state.start_time = None
+        st.session_state.finished = False
+        st.rerun()
