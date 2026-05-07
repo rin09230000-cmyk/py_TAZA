@@ -43,7 +43,7 @@ sentences = {
 # 제목
 st.title("⌨️ Python 타자 연습")
 
-# 상단 설정 영역
+# 상단 설정
 col1, col2 = st.columns(2)
 
 with col1:
@@ -71,25 +71,33 @@ if "start_time" not in st.session_state:
 if "editor_key" not in st.session_state:
     st.session_state.editor_key = 0
 
-# 난이도 변경 시 문제 변경
+if "finished" not in st.session_state:
+    st.session_state.finished = False
+
+if "result" not in st.session_state:
+    st.session_state.result = None
+
+# 난이도 변경 시
 if difficulty != st.session_state.previous_difficulty:
 
     st.session_state.sentence = random.choice(sentences[difficulty])
     st.session_state.previous_difficulty = difficulty
     st.session_state.start_time = None
     st.session_state.editor_key += 1
+    st.session_state.finished = False
+    st.session_state.result = None
 
 sentence = st.session_state.sentence
 
 st.divider()
 
-# 이름 안내
+# 안내
 if username:
     st.success(f"{username}님 화이팅! 🚀")
 else:
-    st.info("이름을 입력하면 기록에 표시돼요!")
+    st.info("이름을 입력하면 더 재밌어요 😎")
 
-# 제시 코드
+# 문제 표시
 st.subheader("📌 제시 코드")
 
 st.code(sentence, language="python")
@@ -108,6 +116,7 @@ user_input = st_ace(
     wrap=True,
     auto_update=True,
     height=250,
+    readonly=st.session_state.finished,
     key=f"editor_{st.session_state.editor_key}"
 )
 
@@ -115,7 +124,7 @@ user_input = st_ace(
 if user_input and st.session_state.start_time is None:
     st.session_state.start_time = time.time()
 
-# 정확도 계산 함수
+# 정확도 계산
 def calculate_accuracy(input_text, target_text):
 
     correct = 0
@@ -127,33 +136,75 @@ def calculate_accuracy(input_text, target_text):
     return (correct / len(target_text)) * 100
 
 # 정답 체크
-if user_input == sentence:
+if (
+    user_input == sentence
+    and not st.session_state.finished
+):
 
     end_time = time.time()
+
     elapsed = end_time - st.session_state.start_time
 
     chars = len(sentence)
+
     cpm = (chars / elapsed) * 60
 
     accuracy = calculate_accuracy(user_input, sentence)
 
-    st.success(
-        f"🎉 완료! "
-        f"⏱️ {elapsed:.2f}초 | "
-        f"⚡ {cpm:.0f} CPM | "
-        f"🎯 {accuracy:.1f}%"
-    )
+    st.session_state.result = {
+        "time": elapsed,
+        "cpm": cpm,
+        "accuracy": accuracy
+    }
 
-    # 다음 문제 자동 생성
-    st.session_state.sentence = random.choice(sentences[difficulty])
-
-    # 입력창 초기화
-    st.session_state.editor_key += 1
-
-    # 시간 초기화
-    st.session_state.start_time = None
+    st.session_state.finished = True
 
     st.rerun()
+
+# 결과 표시
+if st.session_state.finished and st.session_state.result:
+
+    result = st.session_state.result
+
+    st.success("🎉 문제 완료!")
+
+    col3, col4, col5 = st.columns(3)
+
+    with col3:
+        st.metric(
+            "⏱️ 시간",
+            f"{result['time']:.2f}초"
+        )
+
+    with col4:
+        st.metric(
+            "⚡ 속도",
+            f"{result['cpm']:.0f} CPM"
+        )
+
+    with col5:
+        st.metric(
+            "🎯 정확도",
+            f"{result['accuracy']:.1f}%"
+        )
+
+    # 다음 문제 버튼
+    if st.button("➡️ 다음 문제"):
+
+        st.session_state.sentence = random.choice(
+            sentences[difficulty]
+        )
+
+        st.session_state.start_time = None
+
+        st.session_state.finished = False
+
+        st.session_state.result = None
+
+        # 입력창 리셋
+        st.session_state.editor_key += 1
+
+        st.rerun()
 
 # 실시간 정확도
 elif user_input:
@@ -164,19 +215,24 @@ elif user_input:
 
 st.divider()
 
-# 버튼
-col3, col4 = st.columns(2)
+# 하단 버튼
+col6, col7 = st.columns(2)
 
-with col3:
+with col6:
     if st.button("🔄 문제 변경"):
 
-        st.session_state.sentence = random.choice(sentences[difficulty])
+        st.session_state.sentence = random.choice(
+            sentences[difficulty]
+        )
+
         st.session_state.start_time = None
+        st.session_state.finished = False
+        st.session_state.result = None
         st.session_state.editor_key += 1
 
         st.rerun()
 
-with col4:
+with col7:
     if st.button("🧹 입력 초기화"):
 
         st.session_state.start_time = None
